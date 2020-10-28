@@ -1,6 +1,8 @@
 import pandas as pd
+import scipy.constants as const
 
 class Signal_information:
+
     def __init__(self, signal_power=None, path=None):
         if signal_power:
             self._signal_power = signal_power
@@ -57,7 +59,9 @@ class Signal_information:
     def update_path(self):
         self.path = self.path[1:]
 
+
 class Node:
+
     def __init__(self, node_data):
         self._label = node_data['label']
         self._position = node_data['position']
@@ -96,8 +100,68 @@ class Node:
     def successive(self, successive):
         self._successive = successive
 
-    def propagate(self,signal_information):
+    def propagate(self, signal_information):
         signal_information.update_path()
         self.successive[signal_information.path[0]].propagate()
 
 
+class Line:
+
+    def __init__(self, node_data):
+        self._label = node_data['label']
+        self._length = node_data['length']
+        self._successive = {}
+
+    @property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        self._label = label
+
+    @property
+    def length(self):
+        return self._length
+
+    @length.setter
+    def length(self, length):
+        self._length = length
+
+    @property
+    def successive(self):
+        return self._successive
+
+    @successive.setter
+    def successive(self, successive):
+        self._successive = successive
+
+    def latency_generation(self):
+        return (3 * self.length) / (2 * const.speed_of_light)
+
+    def noise_generation(self, signal_power):
+        return 0.001 * signal_power * self.length
+
+    def propagate(self, signal_information):
+        signal_information.increase_noise_power(self.noise_generation(signal_information.signal_power))
+        signal_information.increase_latency(self.latency_generation())
+        self.successive[signal_information.path[0]].propagate()
+
+
+class Network:
+
+    def __init__(self, json_data):
+        self._nodes = {}
+        self._lines = {}
+
+    def connect(self):
+        pass
+
+    def find_paths(self, label_node1, label_node2):
+        pass
+
+    def propagate(self, signal_information):
+        pass
+
+    def draw(self):
+        pass
