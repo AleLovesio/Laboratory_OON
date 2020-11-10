@@ -3,6 +3,7 @@ import numpy as np
 import scipy.constants as const
 import matplotlib.pyplot as plt
 import json as json
+import random
 
 class Signal_information:
 
@@ -258,24 +259,24 @@ class Network:
     def find_best_snr(self, label_start_node, label_end_node):
         paths = self.find_paths(label_start_node, label_end_node)
         best_snr_path = paths[0].replace("", "->")[2:-2]
-        best_snr = self.weighted_paths.loc[self.weighted_paths["Path"] == best_snr_path]["SNR"].tolist()[0]
+        best_snr = self.weighted_paths.loc[self.weighted_paths["Path"] == best_snr_path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
         for path in paths:
             test_snr = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
             if test_snr > best_snr:
-                best_snr_path = path.replace("", "->")[2:-2]
+                best_snr_path = path
                 best_snr = test_snr
         return best_snr_path
 
     def find_best_latency(self, label_start_node, label_end_node):
         paths = self.find_paths(label_start_node, label_end_node)
-        best_latency_path = paths[0].replace("", "->")[2:-2]
-        best_latency = self.weighted_paths.loc[self.weighted_paths["Path"] == best_latency_path]["Latency"].tolist()[0]
+        best_latency_path = paths[0]
+        best_latency = self.weighted_paths.loc[self.weighted_paths["Path"] == best_latency_path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
         for path in paths:
             test_latency = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
             if test_latency < best_latency:
-                best_latency_path = path.replace("", "->")[2:-2]
+                best_latency_path = path
                 best_latency = test_latency
         return best_latency_path
 
@@ -284,7 +285,6 @@ class Network:
             pref = "Latency"
         else:
             pref = "SNR"
-
         for connection in connections_list:
             if pref == "Latency":
                 path = self.find_best_latency(connection.input, connection.output)
@@ -335,10 +335,31 @@ class Connection:
         self._snr = snr
 
 
-
 if __name__ == "__main__":
     network = Network("nodes.json")
-    print(network.weighted_paths)
-    print(network.find_best_snr("A", "E"))
-    print(network.find_best_latency("A", "E"))
+#    print(network.weighted_paths)
+#    print(network.find_best_snr("A", "E"))
+#    print(network.find_best_latency("A", "E"))
     network.draw()
+    network_nodes_list = list(network.nodes.keys())
+    connections_list = []
+    for i in range(100):
+        [start_node, end_node] = random.sample(network_nodes_list, 2)
+        connections_list.append(Connection(start_node, end_node, 1))
+    for analysis_type in ["Latency", "SNR"]:
+        network.stream(connections_list, analysis_type)
+        streams_snr_list = []
+        streams_latency_list = []
+        for connection in connections_list:
+            streams_snr_list.append(connection.snr)
+            streams_latency_list.append(connection.latency)
+        plt.figure()
+        plt.hist(streams_snr_list, bins=15)
+        if analysis_type == "Latency":
+            unit = "[s]"
+        else:
+            unit = "[dB]"
+        plt.xlabel(analysis_type+" Range "+unit)
+        plt.ylabel("Paths")
+        plt.title("Path choice: "+analysis_type)
+    plt.show()
