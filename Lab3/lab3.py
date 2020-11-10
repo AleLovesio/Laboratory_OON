@@ -22,9 +22,9 @@ class Signal_information:
     def signal_power(self):
         return self._signal_power
 
-    #@signal_power.setter
-    #def signal_power(self, signal_power):
-    #    self._signal_power = signal_power
+#    @signal_power.setter
+#    def signal_power(self, signal_power):
+#        self._signal_power = signal_power
 
     @property
     def noise_power(self):
@@ -50,8 +50,8 @@ class Signal_information:
     def path(self, path):
         self._path = path
 
-    #def increase_signal_power(self, additional_signal_power):
-        #self.signal_power = additional_signal_power + self.signal_power
+#    def increase_signal_power(self, additional_signal_power):
+#        self.signal_power = additional_signal_power + self.signal_power
 
     def increase_noise_power(self, additional_noise_power):
         self.noise_power = additional_noise_power + self.noise_power
@@ -75,25 +75,25 @@ class Node:
     def label(self):
         return self._label
 
-    #@label.setter
-    #def label(self, label):
-    #    self._label = label
+#    @label.setter
+#    def label(self, label):
+#        self._label = label
 
     @property
     def position(self):
         return self._position
 
-    #@position.setter
-    #def position(self, position):
-    #    self._position = position
+#    @position.setter
+#    def position(self, position):
+#        self._position = position
 
     @property
     def connected_nodes(self):
         return self._connected_nodes
 
-    #@connected_nodes.setter
-    #def connected_nodes(self, connected_nodes):
-    #    self._connected_nodes = connected_nodes
+#    @connected_nodes.setter
+#    def connected_nodes(self, connected_nodes):
+#        self._connected_nodes = connected_nodes
 
     @property
     def successive(self):
@@ -122,17 +122,17 @@ class Line:
     def label(self):
         return self._label
 
-    #@label.setter
-    #def label(self, label):
-    #    self._label = label
+#    @label.setter
+#    def label(self, label):
+#        self._label = label
 
     @property
     def length(self):
         return self._length
 
-    #@length.setter
-    #def length(self, length):
-    #    self._length = length
+#    @length.setter
+#    def length(self, length):
+#        self._length = length
 
     @property
     def successive(self):
@@ -152,7 +152,7 @@ class Line:
         signal_information.increase_noise_power(self.noise_generation(signal_information.signal_power))
         signal_information.increase_latency(self.latency_generation())
         self.successive[signal_information.path[0]].propagate(signal_information)
-        return signal_information #to return once the propagation is finished
+        return signal_information  # to return once the propagation is finished
 
 
 class Network:
@@ -161,6 +161,7 @@ class Network:
         self._nodes = {}
         self._lines = {}
         self._nodes_data = json.load(open(json_data_file, 'r'))
+        self._weighted_paths = pd.DataFrame()
         for key in self._nodes_data:
             node_pos = tuple(self._nodes_data[key]["position"])
             conn_nodes = self._nodes_data[key]["connected_nodes"]
@@ -170,6 +171,30 @@ class Network:
                 second_node_pos = self._nodes_data[second_node_str]["position"]
                 line_length = np.sqrt((node_pos[0] - second_node_pos[0])**2 + (node_pos[1] - second_node_pos[1])**2)
                 self._lines[line_name] = Line({'label': line_name, 'length': line_length})
+        self.connect()
+        weighted_paths_path_col = []
+        weighted_paths_latency_col = []
+        weighted_paths_noise_col = []
+        weighted_paths_snr_col = []
+
+        for weighted_paths_start_node in self.nodes.keys():
+            for weighted_paths_end_node in self.nodes.keys():
+                if weighted_paths_start_node != weighted_paths_end_node:
+                    for weighted_paths_path in self.find_paths(weighted_paths_start_node, weighted_paths_end_node):
+                        weighted_paths_path_str = ""
+                        for weighted_paths_path_node in weighted_paths_path:
+                            weighted_paths_path_str += weighted_paths_path_node + "->"
+                        weighted_paths_path_col.append(weighted_paths_path_str[:-2])
+                        weighted_paths_sig_inf = Signal_information(1, weighted_paths_path)
+                        weighted_paths_sig_inf = self.propagate(weighted_paths_sig_inf)
+                        weighted_paths_latency_col.append(weighted_paths_sig_inf.latency)
+                        weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
+                        weighted_paths_snr_col.append(10 * np.log10(weighted_paths_sig_inf.signal_power
+                                                                    / weighted_paths_sig_inf.noise_power))
+        self._weighted_paths["Path"] = weighted_paths_path_col
+        self._weighted_paths["Latency"] = weighted_paths_latency_col
+        self._weighted_paths["Noise"] = weighted_paths_noise_col
+        self._weighted_paths["SNR"] = weighted_paths_snr_col
 
     @property
     def nodes(self):
@@ -178,6 +203,10 @@ class Network:
     @property
     def lines(self):
         return self._lines
+
+    @property
+    def weighted_paths(self):
+        return self._weighted_paths
 
     def connect(self):
         for node_name in self.nodes:
@@ -202,13 +231,11 @@ class Network:
                             if connected_line[-1] != label_node2:
                                 new_paths += 1
             level += 1
-
         paths = []
         for i in range(level):
             for final_path in paths_dict[i+1]:
                 if final_path[-1] == label_node2:
                     paths.append(final_path)
-
         return paths
 
     def propagate(self, signal_information):
@@ -228,31 +255,34 @@ class Network:
         plt.title('Network graph')
         plt.show()
 
+    def find_best_snr(self, label_start_node, label_end_node):
+        paths = self.find_paths(label_start_node, label_end_node)
+        best_snr_path = paths[0].replace("", "->")[2:-2]
+        best_snr = self.weighted_paths.loc[self.weighted_paths["Path"] == best_snr_path]["SNR"].tolist()[0]
+        for path in paths:
+            test_snr = \
+                self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
+            if test_snr > best_snr:
+                best_snr_path = path.replace("", "->")[2:-2]
+                best_snr = test_snr
+        return best_snr_path
+
+    def find_best_latency(self, label_start_node, label_end_node):
+        paths = self.find_paths(label_start_node, label_end_node)
+        best_latency_path = paths[0].replace("", "->")[2:-2]
+        best_latency = self.weighted_paths.loc[self.weighted_paths["Path"] == best_latency_path]["Latency"].tolist()[0]
+        for path in paths:
+            test_latency = \
+                self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
+            if test_latency < best_latency:
+                best_latency_path = path.replace("", "->")[2:-2]
+                best_latency = test_latency
+        return best_latency_path
+
 
 if __name__ == "__main__":
     network = Network("nodes.json")
-    network.connect()
-    dataframe = pd.DataFrame()
-    path_col = []
-    latency_col = []
-    noise_col = []
-    snr_col = []
-    for start_node in network.nodes.keys():
-        for end_node in network.nodes.keys():
-            if start_node != end_node:
-                for path in network.find_paths(start_node, end_node):
-                    path_str = ""
-                    for path_node in path:
-                        path_str += path_node + "->"
-                    path_col.append(path_str[:-2])
-                    sig_inf = Signal_information(1, path)
-                    sig_inf = network.propagate(sig_inf)
-                    latency_col.append(sig_inf.latency)
-                    noise_col.append(sig_inf.noise_power)
-                    snr_col.append(10 * np.log10(sig_inf.signal_power / sig_inf.noise_power))
-    dataframe["Path"] = path_col
-    dataframe["Latency"] = latency_col
-    dataframe["Noise"] = noise_col
-    dataframe["SNR"] = snr_col
-    print(dataframe)
+    print(network.weighted_paths)
+    print(network.find_best_snr("A", "E"))
+    print(network.find_best_latency("A", "E"))
     network.draw()
