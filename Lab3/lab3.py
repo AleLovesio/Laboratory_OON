@@ -279,6 +279,62 @@ class Network:
                 best_latency = test_latency
         return best_latency_path
 
+    def stream(self, connections_list, pref=None):
+        if pref:
+            pref = "Latency"
+        else:
+            pref = "SNR"
+
+        for connection in connections_list:
+            if pref == "Latency":
+                path = self.find_best_latency(connection.input, connection.output)
+            else:
+                path = self.find_best_snr(connection.input, connection.output)
+            signal_information = Signal_information(1, path)
+            signal_information = self.propagate(signal_information)
+            connection.latency = signal_information.latency
+            connection.snr = (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
+        return connections_list
+
+
+class Connection:
+
+    def __init__(self, input, output, signal_power):
+        self._input = input
+        self._output = output
+        self._signal_power = signal_power
+        self._latency = 0.0
+        self._snr = 0.0
+
+    @property
+    def input(self):
+        return self._input
+
+    @property
+    def output(self):
+        return self._output
+
+    @property
+    def signal_power(self):
+        return self._signal_power
+
+    @property
+    def latency(self):
+        return self._latency
+
+    @property
+    def snr(self):
+        return self._snr
+
+    @latency.setter
+    def latency(self, latency):
+        self._latency = latency
+
+    @snr.setter
+    def snr(self, snr):
+        self._snr = snr
+
+
 
 if __name__ == "__main__":
     network = Network("nodes.json")
