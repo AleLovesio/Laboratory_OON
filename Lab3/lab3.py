@@ -118,6 +118,7 @@ class Line:
         self._label = node_data['label']
         self._length = node_data['length']
         self._successive = {}
+        self._state = "free"  # or "occupied"
 
     @property
     def label(self):
@@ -142,6 +143,14 @@ class Line:
     @successive.setter
     def successive(self, successive):
         self._successive = successive
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, state):
+        self._state = state
 
     def latency_generation(self):
         return (3 * self.length) / (2 * const.speed_of_light)
@@ -258,24 +267,32 @@ class Network:
 
     def find_best_snr(self, label_start_node, label_end_node):
         paths = self.find_paths(label_start_node, label_end_node)
-        best_snr_path = paths[0].replace("", "->")[2:-2]
-        best_snr = self.weighted_paths.loc[self.weighted_paths["Path"] == best_snr_path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
+        best_snr_path = ""
+        best_snr = float('-inf')
         for path in paths:
             test_snr = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
-            if test_snr > best_snr:
+            path_free = True
+            for node_iter in range(len(path)-1):
+                if self.lines[path[node_iter:node_iter + 2]].state != "free":
+                    path_free = False
+            if (test_snr > best_snr) and path_free:
                 best_snr_path = path
                 best_snr = test_snr
         return best_snr_path
 
     def find_best_latency(self, label_start_node, label_end_node):
         paths = self.find_paths(label_start_node, label_end_node)
-        best_latency_path = paths[0]
-        best_latency = self.weighted_paths.loc[self.weighted_paths["Path"] == best_latency_path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
+        best_latency_path = ""
+        best_latency = float('inf')
         for path in paths:
             test_latency = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
-            if test_latency < best_latency:
+            path_free = True
+            for node_iter in range(len(path) - 1):
+                if self.lines[path[node_iter:node_iter + 2]].state != "free":
+                    path_free = False
+            if (test_latency < best_latency) and path_free:
                 best_latency_path = path
                 best_latency = test_latency
         return best_latency_path
@@ -290,10 +307,14 @@ class Network:
                 path = self.find_best_latency(connection.input, connection.output)
             else:
                 path = self.find_best_snr(connection.input, connection.output)
-            signal_information = Signal_information(1, path)
-            signal_information = self.propagate(signal_information)
-            connection.latency = signal_information.latency
-            connection.snr = (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
+            if path != "":
+                signal_information = Signal_information(1, path)
+                signal_information = self.propagate(signal_information)
+                connection.latency = signal_information.latency
+                connection.snr = (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
+            else:
+                connection.latency = "None"
+                connection.snr = 0
         return connections_list
 
 
@@ -340,7 +361,7 @@ if __name__ == "__main__":
 #    print(network.weighted_paths)
 #    print(network.find_best_snr("A", "E"))
 #    print(network.find_best_latency("A", "E"))
-    network.draw()
+#    network.draw()
     network_nodes_list = list(network.nodes.keys())
     connections_list = []
     for i in range(100):
