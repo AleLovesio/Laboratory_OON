@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import json as json
 import random
 
-class Signal_information:
+
+class SignalInformation:
 
     def __init__(self, signal_power=None, path=None):
         if signal_power:
@@ -195,7 +196,7 @@ class Network:
                         for weighted_paths_path_node in weighted_paths_path:
                             weighted_paths_path_str += weighted_paths_path_node + "->"
                         weighted_paths_path_col.append(weighted_paths_path_str[:-2])
-                        weighted_paths_sig_inf = Signal_information(1, weighted_paths_path)
+                        weighted_paths_sig_inf = SignalInformation(1, weighted_paths_path)
                         weighted_paths_sig_inf = self.propagate(weighted_paths_sig_inf)
                         weighted_paths_latency_col.append(weighted_paths_sig_inf.latency)
                         weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
@@ -308,13 +309,13 @@ class Network:
             else:
                 path = self.find_best_snr(connection.input, connection.output)
             if path != "":
-                signal_information = Signal_information(1, path)
+                signal_information = SignalInformation(1, path)
                 signal_information = self.propagate(signal_information)
                 connection.latency = signal_information.latency
                 connection.snr = (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
             else:
-                connection.latency = "None"
-                connection.snr = 0
+                connection.latency = 0
+                connection.snr = "None"
         return connections_list
 
 
