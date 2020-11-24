@@ -7,6 +7,7 @@ import random
 
 NUMBER_OF_CHANNELS = 10
 
+
 class SignalInformation:
 
     def __init__(self, signal_power=None, path=None):
@@ -178,11 +179,19 @@ class Line:
     def noise_generation(self, signal_power):
         return 0.001 * signal_power * self.length
 
-    def propagate(self, signal_information):
-        signal_information.increase_noise_power(self.noise_generation(signal_information.signal_power))
-        signal_information.increase_latency(self.latency_generation())
-        self.successive[signal_information.path[0]].propagate(signal_information)
-        return signal_information  # to return once the propagation is finished
+#    def propagate(self, signal_information):
+#        signal_information.increase_noise_power(self.noise_generation(signal_information.signal_power))
+#        signal_information.increase_latency(self.latency_generation())
+#        self.successive[signal_information.path[0]].propagate(signal_information)
+#        return signal_information  # to return once the propagation is finished
+
+    def propagate(self, lightpath):
+        lightpath.increase_noise_power(self.noise_generation(lightpath.signal_power))
+        lightpath.increase_latency(self.latency_generation())
+        self.successive[lightpath.path[0]].propagate(lightpath)
+        if type(lightpath) == Lightpath:
+            self.state[int(lightpath.channel[-1])] = "occupied"
+        return lightpath  # to return once the propagation is finished
 
 
 class Network:
@@ -207,6 +216,7 @@ class Network:
         weighted_paths_latency_col = []
         weighted_paths_noise_col = []
         weighted_paths_snr_col = []
+        df_indexes = []
 
         for weighted_paths_start_node in self.nodes.keys():
             for weighted_paths_end_node in self.nodes.keys():
@@ -215,6 +225,7 @@ class Network:
                         weighted_paths_path_str = ""
                         for weighted_paths_path_node in weighted_paths_path:
                             weighted_paths_path_str += weighted_paths_path_node + "->"
+                        df_indexes.append(weighted_paths_path_str.replace("->", ""))
                         weighted_paths_path_col.append(weighted_paths_path_str[:-2])
                         weighted_paths_sig_inf = SignalInformation(1, weighted_paths_path)
                         weighted_paths_sig_inf = self.propagate(weighted_paths_sig_inf)
@@ -222,14 +233,16 @@ class Network:
                         weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
                         weighted_paths_snr_col.append(10 * np.log10(weighted_paths_sig_inf.signal_power
                                                                     / weighted_paths_sig_inf.noise_power))
+
         self._weighted_paths["Path"] = weighted_paths_path_col
         self._weighted_paths["Latency"] = weighted_paths_latency_col
         self._weighted_paths["Noise"] = weighted_paths_noise_col
         self._weighted_paths["SNR"] = weighted_paths_snr_col
         self._route_space["Path"] = weighted_paths_path_col
+        self._weighted_paths.index = df_indexes
         for col_num in range(NUMBER_OF_CHANNELS):
             self._route_space["CH"+str(col_num)] = ["free"]*len(weighted_paths_path_col)
-        pass
+        self._route_space.index = df_indexes
 
     @property
     def nodes(self):
@@ -271,8 +284,8 @@ class Network:
                                 new_paths += 1
             level += 1
         paths = []
-        for i in range(level):
-            for final_path in paths_dict[i+1]:
+        for i_level in range(level):
+            for final_path in paths_dict[i_level+1]:
                 if final_path[-1] == label_node2:
                     paths.append(final_path)
         return paths
@@ -301,15 +314,16 @@ class Network:
         for path in paths:
             test_snr = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["SNR"].tolist()[0]
-            path_free = True
-            for node_iter in range(len(path)-1):
-                channel_free = False
-                for channel_iter in self.lines[path[node_iter:node_iter + 2]].state:
-                    if channel_iter == "free":
-                        channel_free = True
-                if not channel_free:
-                    path_free = False
-            if (test_snr > best_snr) and path_free:
+        #    path_free = True
+        #    for node_iter in range(len(path)-1):
+        #        channel_free = False
+        #        for channel_iter in self.lines[path[node_iter:node_iter + 2]].state:
+        #            if channel_iter == "free":
+        #                channel_free = True
+        #        if not channel_free:
+        #            path_free = False
+        #    if (test_snr > best_snr) and path_free:
+            if (test_snr > best_snr) and ("free" in self.route_space.loc[path].tolist()) :
                 best_snr_path = path
                 best_snr = test_snr
         return best_snr_path
@@ -320,38 +334,55 @@ class Network:
         best_latency = float('inf')
         for path in paths:
             test_latency = \
-                self.weighted_paths.loc[self.weighted_paths["Path"] == path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
-            path_free = True
-            for node_iter in range(len(path) - 1):
-                channel_free = False
-                for channel_iter in self.lines[path[node_iter:node_iter + 2]].state:
-                    if channel_iter == "free":
-                        channel_free = True
-                if not channel_free:
-                    path_free = False
-            if (test_latency < best_latency) and path_free:
+                self.weighted_paths.loc[self.weighted_paths["Path"] ==
+                                        path.replace("", "->")[2:-2]]["Latency"].tolist()[0]
+        #    path_free = True
+        #    for node_iter in range(len(path) - 1):
+        #        channel_free = False
+        #        for channel_iter in self.lines[path[node_iter:node_iter + 2]].state:
+        #            if channel_iter == "free":
+        #                channel_free = True
+        #        if not channel_free:
+        #            path_free = False
+        #    if (test_latency < best_latency) and path_free:
+            if (test_latency < best_latency) and ("free" in self.route_space.loc[path].tolist()):
                 best_latency_path = path
                 best_latency = test_latency
         return best_latency_path
 
-    def stream(self, connections_list, pref=None):
+    def stream(self, stream_connections_list, pref=None):
         if pref:
             pref = "Latency"
         else:
             pref = "SNR"
-        for connection in connections_list:
+        for stream_connection in stream_connections_list:
             if pref == "Latency":
-                path = self.find_best_latency(connection.input, connection.output)
+                path = self.find_best_latency(stream_connection.input, stream_connection.output)
             else:
-                path = self.find_best_snr(connection.input, connection.output)
+                path = self.find_best_snr(stream_connection.input, stream_connection.output)
             if path != "":
-                signal_information = SignalInformation(1, path)
-                signal_information = self.propagate(signal_information)
-                connection.latency = signal_information.latency
-                connection.snr = (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
+                # signal_information = SignalInformation(1, path)
+                # signal_information = self.propagate(signal_information)
+
+                first_available_channel = self.route_space.loc[path].tolist().index("free")-1  # find the first one
+                lightpath = Lightpath(1, path, "CH"+str(first_available_channel))
+                lightpath = self.propagate(lightpath)
+                # self.route_space.loc[path]["CH"+str(first_available_channel)] = "occupied"
+                for occupied_route_node in path:
+                    paths_to_be_occupied = [path for path in self.route_space.index.tolist() if path.find(occupied_route_node) >= 0]
+                    for path_to_be_occupied in paths_to_be_occupied:
+                        self.route_space.loc[path_to_be_occupied, "CH" + str(first_available_channel)] = "occupied"
+                    # self.route_space.loc[self.route_space.index.str.find(occupied_route_node), "CH"+str(first_available_channel)] = "occupied"
+
+                # stream_connection.latency = signal_information.latency
+                # stream_connection.snr = \
+                #    (10 * np.log10(signal_information.signal_power / signal_information.noise_power))
+                stream_connection.latency = lightpath.latency
+                stream_connection.snr = \
+                    (10 * np.log10(lightpath.signal_power / lightpath.noise_power))
             else:
-                connection.latency = 0
-                connection.snr = "None"
+                stream_connection.latency = 0
+                stream_connection.snr = "None"
         return connections_list
 
 
@@ -405,14 +436,19 @@ if __name__ == "__main__":
         [start_node, end_node] = random.sample(network_nodes_list, 2)
         connections_list.append(Connection(start_node, end_node, 1))
     for analysis_type in ["Latency", "SNR"]:
+        if analysis_type != "Latency":
+            network = Network("nodes.json")
+        network = Network("nodes.json")
         network.stream(connections_list, analysis_type)
-        streams_snr_list = []
-        streams_latency_list = []
+        streams_list = []
         for connection in connections_list:
-            streams_snr_list.append(connection.snr)
-            streams_latency_list.append(connection.latency)
+            if analysis_type == "Latency" and connection.latency != 0:
+                streams_list.append(connection.latency)
+            elif analysis_type == "SNR" and connection.snr != "None":
+                streams_list.append(connection.snr)
+
         plt.figure()
-        plt.hist(streams_snr_list, bins=15)
+        plt.hist(streams_list, bins=15)
         if analysis_type == "Latency":
             unit = "[s]"
         else:
@@ -420,4 +456,4 @@ if __name__ == "__main__":
         plt.xlabel(analysis_type+" Range "+unit)
         plt.ylabel("Paths")
         plt.title("Path choice: "+analysis_type)
-    plt.show()
+        plt.show()
