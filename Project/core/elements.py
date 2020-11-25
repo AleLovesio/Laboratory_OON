@@ -321,11 +321,17 @@ class Network:
                 first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
                 lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
                 lightpath = self.propagate(lightpath)
-                for occupied_route_node in path:
-                    paths_to_be_occupied = \
-                        [path for path in self.route_space.index.tolist() if path.find(occupied_route_node) >= 0]
-                    for path_to_be_occupied in paths_to_be_occupied:
-                        self.route_space.loc[path_to_be_occupied, "CH" + str(first_available_channel)] = 0
+                self.route_space.loc[path, "CH" + str(first_available_channel)] = 0
+                for path in self.route_space.index.tolist():
+                    occupancy = np.array(self.route_space.loc[path].to_list()[1:])
+                    # update occupation with switching matrix
+                    for i in range(len(path) - 2):
+                        occupancy = occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
+                    # update occupation with line occupation
+                    for i in range(len(path) - 1):
+                        occupancy = occupancy * np.array(self.lines[path[i:i + 2]].state)
+                    for channel in range(len(occupancy)):
+                        self.route_space.loc[path, "CH" + str(channel)] = occupancy[channel]
                 stream_connection.latency = lightpath.latency
                 stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
             else:
