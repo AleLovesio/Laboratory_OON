@@ -19,7 +19,7 @@ if __name__ == "__main__":
     for analysis_type in ["Latency", "SNR"]:
         if analysis_type != "Latency":
             network = elem.Network(file)  # to create a new object with no connections
-        network.stream(connections_list, analysis_type)
+        connections_list = network.stream(connections_list, analysis_type)
         streams_list = []
         for connection in connections_list:
             if analysis_type == "Latency" and connection.latency != 0:

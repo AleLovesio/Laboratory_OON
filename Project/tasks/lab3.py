@@ -16,7 +16,7 @@ if __name__ == "__main__":
         [start_node, end_node] = util.sample_2_nodes(network_nodes_list)
         connections_list.append(elem.Connection(start_node, end_node, 1))
     for analysis_type in ["Latency", "SNR"]:
-        network.stream(connections_list, analysis_type)
+        connections_list = network.stream(connections_list, analysis_type)
         streams_snr_list = []
         streams_latency_list = []
         for connection in connections_list:
