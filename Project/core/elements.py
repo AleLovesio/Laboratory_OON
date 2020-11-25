@@ -174,10 +174,13 @@ class Network:
         self._nodes_data = json.load(open(json_data_file, 'r'))
         self._weighted_paths = pd.DataFrame()
         self._route_space = pd.DataFrame()
+        self._default_switching_matrix_dict = {}
         for key in self._nodes_data:
             node_pos = tuple(self._nodes_data[key]["position"])
             conn_nodes = self._nodes_data[key]["connected_nodes"]
             self._nodes[key] = Node({'label': key, 'position': node_pos, 'connected_nodes': conn_nodes})
+            if "switching_matrix" in self._nodes_data[key].keys():
+                self._default_switching_matrix_dict[key] = self._nodes_data[key]["switching_matrix"]
             for second_node_str in conn_nodes:
                 line_name = key+second_node_str
                 second_node_pos = self._nodes_data[second_node_str]["position"]
@@ -227,21 +230,31 @@ class Network:
     def route_space(self):
         return self._route_space
 
+    @property
+    def default_switching_matrix_dict(self):
+        return self._default_switching_matrix_dict
+
     def connect(self):
         for node_name in self.nodes:
-            self.nodes[node_name].switching_matrix = {}
+            if node_name not in self.default_switching_matrix_dict.keys():
+                self.nodes[node_name].switching_matrix = {}
+            else:
+                self.nodes[node_name].switching_matrix = \
+                    self.default_switching_matrix_dict[node_name]
+
             for connected_node in self.nodes[node_name].connected_nodes:
                 line_name = node_name + connected_node
                 self.lines[line_name].successive[connected_node] = self.nodes[connected_node]
                 self.nodes[node_name].successive[line_name] = self.lines[line_name]
-                self.nodes[node_name].switching_matrix[connected_node] = {}
-                for connected_node_2 in self.nodes[node_name].connected_nodes:
-                    if connected_node != connected_node_2:
-                        self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
-                            [1] * param.NUMBER_OF_CHANNELS
-                    else:
-                        self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
-                            [0] * param.NUMBER_OF_CHANNELS
+                if node_name not in self.default_switching_matrix_dict.keys():
+                    self.nodes[node_name].switching_matrix[connected_node] = {}
+                    for connected_node_2 in self.nodes[node_name].connected_nodes:
+                        if connected_node != connected_node_2:
+                            self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
+                                [1] * param.NUMBER_OF_CHANNELS
+                        else:
+                            self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
+                                [0] * param.NUMBER_OF_CHANNELS
 
     def find_paths(self, label_node1, label_node2):
         paths_dict = {0: label_node1}
