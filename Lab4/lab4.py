@@ -383,7 +383,7 @@ class Network:
             else:
                 stream_connection.latency = 0
                 stream_connection.snr = "None"
-        return connections_list
+        return stream_connections_list
 
 
 class Connection:
