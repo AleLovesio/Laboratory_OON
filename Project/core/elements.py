@@ -303,6 +303,11 @@ class Network:
                 first_available_channel = self.route_space.loc[path].tolist().index("free") - 1  # find the first one
                 lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
                 lightpath = self.propagate(lightpath)
+                for occupied_route_node in path:
+                    paths_to_be_occupied = \
+                        [path for path in self.route_space.index.tolist() if path.find(occupied_route_node) >= 0]
+                    for path_to_be_occupied in paths_to_be_occupied:
+                        self.route_space.loc[path_to_be_occupied, "CH" + str(first_available_channel)] = "occupied"
                 stream_connection.latency = lightpath.latency
                 stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
             else:
