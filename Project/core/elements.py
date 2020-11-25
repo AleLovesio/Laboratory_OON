@@ -81,6 +81,7 @@ class Node:
         self._position = node_data['position']
         self._connected_nodes = node_data['connected_nodes']
         self._successive = {}
+        self._switching_matrix = None
 
     @property
     def label(self):
@@ -102,6 +103,14 @@ class Node:
     def successive(self, successive):
         self._successive = successive
 
+    @property
+    def switching_matrix(self):
+        return self._switching_matrix
+
+    @switching_matrix.setter
+    def switching_matrix(self, switching_matrix):
+        self._switching_matrix = switching_matrix
+
     def propagate(self, signal_information):
         if len(signal_information.path) > 1:
             line = self.successive[signal_information.path[:2]]
@@ -116,7 +125,7 @@ class Line:
         self._label = node_data['label']
         self._length = node_data['length']
         self._successive = {}
-        self._state = ["free"]*param.NUMBER_OF_CHANNELS  # or ["occupied"]
+        self._state = [1]*param.NUMBER_OF_CHANNELS  # or [0]
 
     @property
     def label(self):
@@ -153,7 +162,7 @@ class Line:
         lightpath.increase_latency(self.latency_generation())
         self.successive[lightpath.path[0]].propagate(lightpath)
         if type(lightpath) == Lightpath:
-            self.state[int(lightpath.channel[-1])] = "occupied"
+            self.state[int(lightpath.channel[-1])] = 0
         return lightpath  # to return once the propagation is finished
 
 
@@ -199,7 +208,7 @@ class Network:
         self._route_space["Path"] = weighted_paths_path_col
         self._weighted_paths.index = df_indexes
         for col_num in range(param.NUMBER_OF_CHANNELS):
-            self._route_space["CH" + str(col_num)] = ["free"] * len(weighted_paths_path_col)
+            self._route_space["CH" + str(col_num)] = [1] * len(weighted_paths_path_col)
         self._route_space.index = df_indexes
 
     @property
@@ -220,10 +229,19 @@ class Network:
 
     def connect(self):
         for node_name in self.nodes:
+            self.nodes[node_name].switching_matrix = {}
             for connected_node in self.nodes[node_name].connected_nodes:
                 line_name = node_name + connected_node
                 self.lines[line_name].successive[connected_node] = self.nodes[connected_node]
                 self.nodes[node_name].successive[line_name] = self.lines[line_name]
+                self.nodes[node_name].switching_matrix[connected_node] = {}
+                for connected_node_2 in self.nodes[node_name].connected_nodes:
+                    if connected_node != connected_node_2:
+                        self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
+                            [1] * param.NUMBER_OF_CHANNELS
+                    else:
+                        self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
+                            [0] * param.NUMBER_OF_CHANNELS
 
     def find_paths(self, label_node1, label_node2):
         paths_dict = {0: label_node1}
@@ -272,7 +290,7 @@ class Network:
         for path in paths:
             test_snr = \
                 self.weighted_paths.loc[self.weighted_paths["Path"] == util.path_add_arrows(path)]["SNR"].tolist()[0]
-            if (test_snr > best_snr) and ("free" in self.route_space.loc[path].tolist()):
+            if (test_snr > best_snr) and (1 in self.route_space.loc[path].tolist()):
                 best_snr_path = path
                 best_snr = test_snr
         return best_snr_path
@@ -284,7 +302,7 @@ class Network:
         for path in paths:
             test_latency = self.weighted_paths.loc[self.weighted_paths["Path"] ==
                                                    util.path_add_arrows(path)]["Latency"].tolist()[0]
-            if (test_latency < best_latency) and ("free" in self.route_space.loc[path].tolist()):
+            if (test_latency < best_latency) and (1 in self.route_space.loc[path].tolist()):
                 best_latency_path = path
                 best_latency = test_latency
         return best_latency_path
@@ -300,14 +318,14 @@ class Network:
             else:
                 path = self.find_best_snr(stream_connection.input, stream_connection.output)
             if path != "":
-                first_available_channel = self.route_space.loc[path].tolist().index("free") - 1  # find the first one
+                first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
                 lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
                 lightpath = self.propagate(lightpath)
                 for occupied_route_node in path:
                     paths_to_be_occupied = \
                         [path for path in self.route_space.index.tolist() if path.find(occupied_route_node) >= 0]
                     for path_to_be_occupied in paths_to_be_occupied:
-                        self.route_space.loc[path_to_be_occupied, "CH" + str(first_available_channel)] = "occupied"
+                        self.route_space.loc[path_to_be_occupied, "CH" + str(first_available_channel)] = 0
                 stream_connection.latency = lightpath.latency
                 stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
             else:
