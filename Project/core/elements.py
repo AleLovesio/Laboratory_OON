@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import json as json
+import copy
 
 
 class SignalInformation:
@@ -66,7 +67,7 @@ class Lightpath(SignalInformation):
         if channel:
             self._channel = channel
         else:
-            self._channel = 0
+            self._channel = "CH0"
             # self._channel = 193.5e12
 
     @property
@@ -111,12 +112,23 @@ class Node:
     def switching_matrix(self, switching_matrix):
         self._switching_matrix = switching_matrix
 
-    def propagate(self, signal_information):
-        if len(signal_information.path) > 1:
-            line = self.successive[signal_information.path[:2]]
-            signal_information.update_path()
-            signal_information = line.propagate(signal_information)
-        return signal_information
+    def propagate(self, lightpath):
+        # check if it is not the last node
+        if len(lightpath.path) > 1:
+            # check if it is not a signal_information and if the next node switching matrix has to be updated
+            # but only if the side channels have to be occupied
+            if type(lightpath) == Lightpath and len(lightpath.path) > 2 and param.side_channel_occupancy:
+                if (int(lightpath.channel[-1]) + 1) < param.NUMBER_OF_CHANNELS:
+                    self.successive[lightpath.path[:2]].successive[lightpath.path[1]].switching_matrix[lightpath.path[
+                        0]][lightpath.path[2]][int(lightpath.channel[-1]) + 1] = 0
+                if (int(lightpath.channel[-1]) - 1) >= 0:
+                    self.successive[lightpath.path[:2]].successive[lightpath.path[1]].switching_matrix[lightpath.path[
+                        0]][lightpath.path[2]][int(lightpath.channel[-1]) - 1] = 0
+            line = self.successive[lightpath.path[:2]]
+            lightpath.update_path()
+            lightpath = line.propagate(lightpath)
+
+        return lightpath
 
 
 class Line:
@@ -238,22 +250,29 @@ class Network:
         for node_name in self.nodes:
             if node_name not in self.default_switching_matrix_dict.keys():
                 self.nodes[node_name].switching_matrix = {}
+                set_default = 1
             else:
                 self.nodes[node_name].switching_matrix = \
-                    self.default_switching_matrix_dict[node_name]
-
+                    copy.deepcopy(self.default_switching_matrix_dict[node_name])
+                # copy is to make a real copy (deep copy) and not a reference
+                set_default = 0
             for connected_node in self.nodes[node_name].connected_nodes:
                 line_name = node_name + connected_node
                 self.lines[line_name].successive[connected_node] = self.nodes[connected_node]
                 self.nodes[node_name].successive[line_name] = self.lines[line_name]
-                if node_name not in self.default_switching_matrix_dict.keys():
+                if set_default == 1:
                     self.nodes[node_name].switching_matrix[connected_node] = {}
+                    self.default_switching_matrix_dict[node_name][connected_node] = {}
                     for connected_node_2 in self.nodes[node_name].connected_nodes:
                         if connected_node != connected_node_2:
                             self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
                                 [1] * param.NUMBER_OF_CHANNELS
+                            self.default_switching_matrix_dict[node_name][connected_node][connected_node_2] = \
+                                [1] * param.NUMBER_OF_CHANNELS
                         else:
                             self.nodes[node_name].switching_matrix[connected_node][connected_node_2] = \
+                                [0] * param.NUMBER_OF_CHANNELS
+                            self.default_switching_matrix_dict[node_name][connected_node][connected_node_2] = \
                                 [0] * param.NUMBER_OF_CHANNELS
 
     def find_paths(self, label_node1, label_node2):
@@ -350,6 +369,12 @@ class Network:
             else:
                 stream_connection.latency = 0
                 stream_connection.snr = "None"
+        for node in self.nodes:
+            self.nodes[node].switching_matrix = dict(self.default_switching_matrix_dict[node])
+        for line in self.lines:
+            self.lines[line].state = [1]*param.NUMBER_OF_CHANNELS
+        for col_num in range(param.NUMBER_OF_CHANNELS):
+            self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
         return stream_connections_list
 
 
