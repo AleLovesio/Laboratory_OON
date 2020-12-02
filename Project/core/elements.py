@@ -198,7 +198,10 @@ class Network:
         for key in self._nodes_data:
             node_pos = tuple(self._nodes_data[key]["position"])
             conn_nodes = self._nodes_data[key]["connected_nodes"]
-            transceiver = self._nodes_data[key]["transceiver"]
+            if "transceiver" in self._nodes_data[key].keys():
+                transceiver = self._nodes_data[key]["transceiver"]
+            else:
+                transceiver = "fixed-rate"
             self._nodes[key] = \
                 Node({'label': key, 'position': node_pos, 'connected_nodes': conn_nodes, 'transceiver': transceiver})
             if "switching_matrix" in self._nodes_data[key].keys():
