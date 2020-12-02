@@ -83,6 +83,10 @@ class Node:
         self._connected_nodes = node_data['connected_nodes']
         self._successive = {}
         self._switching_matrix = None
+        if 'transceiver' in node_data.keys():
+            self._transceiver = node_data['transceiver']
+        else:
+            self._transceiver = "fixed-rate"
 
     @property
     def label(self):
@@ -111,6 +115,10 @@ class Node:
     @switching_matrix.setter
     def switching_matrix(self, switching_matrix):
         self._switching_matrix = switching_matrix
+
+    @property
+    def transceiver(self):
+        return self._transceiver
 
     def propagate(self, lightpath):
         # check if it is not the last node
@@ -190,7 +198,9 @@ class Network:
         for key in self._nodes_data:
             node_pos = tuple(self._nodes_data[key]["position"])
             conn_nodes = self._nodes_data[key]["connected_nodes"]
-            self._nodes[key] = Node({'label': key, 'position': node_pos, 'connected_nodes': conn_nodes})
+            transceiver = self._nodes_data[key]["transceiver"]
+            self._nodes[key] = \
+                Node({'label': key, 'position': node_pos, 'connected_nodes': conn_nodes, 'transceiver': transceiver})
             if "switching_matrix" in self._nodes_data[key].keys():
                 self._default_switching_matrix_dict[key] = self._nodes_data[key]["switching_matrix"]
             for second_node_str in conn_nodes:
