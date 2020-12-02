@@ -363,22 +363,28 @@ class Network:
             else:
                 path = self.find_best_snr(stream_connection.input, stream_connection.output)
             if path != "":
-                first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
-                lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
-                lightpath = self.propagate(lightpath)
-                self.route_space.loc[path, "CH" + str(first_available_channel)] = 0
-                for path in self.route_space.index.tolist():
-                    occupancy = np.array(self.route_space.loc[path].to_list()[1:])
-                    # update occupation with switching matrix
-                    for i in range(len(path) - 2):
-                        occupancy = occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
-                    # update occupation with line occupation
-                    for i in range(len(path) - 1):
-                        occupancy = occupancy * np.array(self.lines[path[i:i + 2]].state)
-                    for channel in range(len(occupancy)):
-                        self.route_space.loc[path, "CH" + str(channel)] = occupancy[channel]
-                stream_connection.latency = lightpath.latency
-                stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
+                bit_rate = self.calculate_bit_rate(path, self.nodes[path[0]].transceiver)
+                stream_connection.bit_rate = bit_rate
+                if bit_rate > 0:
+                    first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
+                    lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
+                    lightpath = self.propagate(lightpath)
+                    self.route_space.loc[path, "CH" + str(first_available_channel)] = 0
+                    for path in self.route_space.index.tolist():
+                        occupancy = np.array(self.route_space.loc[path].to_list()[1:])
+                        # update occupation with switching matrix
+                        for i in range(len(path) - 2):
+                            occupancy = occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
+                        # update occupation with line occupation
+                        for i in range(len(path) - 1):
+                            occupancy = occupancy * np.array(self.lines[path[i:i + 2]].state)
+                        for channel in range(len(occupancy)):
+                            self.route_space.loc[path, "CH" + str(channel)] = occupancy[channel]
+                    stream_connection.latency = lightpath.latency
+                    stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
+                else:
+                    stream_connection.latency = 0
+                    stream_connection.snr = "None"
             else:
                 stream_connection.latency = 0
                 stream_connection.snr = "None"
@@ -411,6 +417,7 @@ class Connection:
         self._signal_power = signal_power
         self._latency = 0.0
         self._snr = 0.0
+        self._bit_rate = 0.0
 
     @property
     def input(self):
@@ -432,6 +439,10 @@ class Connection:
     def snr(self):
         return self._snr
 
+    @property
+    def bit_rate(self):
+        return self._bit_rate
+
     @latency.setter
     def latency(self, latency):
         self._latency = latency
@@ -439,3 +450,7 @@ class Connection:
     @snr.setter
     def snr(self, snr):
         self._snr = snr
+
+    @bit_rate.setter
+    def bit_rate(self, bit_rate):
+        self._bit_rate = bit_rate
