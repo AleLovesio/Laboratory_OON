@@ -377,6 +377,18 @@ class Network:
             self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
         return stream_connections_list
 
+    def calculate_bit_rate(self, path, strategy):
+        if strategy == "fixed-rate":
+            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+        elif strategy == "flex-rate":
+            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+        elif strategy == "shannon":
+            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+        else:
+            bit_rate = 0  # error
+        return bit_rate
+
+
 
 class Connection:
 
