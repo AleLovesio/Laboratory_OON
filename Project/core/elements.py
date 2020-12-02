@@ -86,7 +86,7 @@ class Node:
         if 'transceiver' in node_data.keys():
             self._transceiver = node_data['transceiver']
         else:
-            self._transceiver = "fixed-rate"
+            self._transceiver = "fixed_rate"
 
     @property
     def label(self):
@@ -201,7 +201,7 @@ class Network:
             if "transceiver" in self._nodes_data[key].keys():
                 transceiver = self._nodes_data[key]["transceiver"]
             else:
-                transceiver = "fixed-rate"
+                transceiver = "fixed_rate"
             self._nodes[key] = \
                 Node({'label': key, 'position': node_pos, 'connected_nodes': conn_nodes, 'transceiver': transceiver})
             if "switching_matrix" in self._nodes_data[key].keys():
@@ -397,12 +397,12 @@ class Network:
         return stream_connections_list
 
     def calculate_bit_rate(self, path, strategy):
-        if strategy == "fixed-rate":
+        if strategy == "fixed_rate":
             bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
-        elif strategy == "flex-rate":
-            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+        elif strategy == "flex_rate":
+            bit_rate = sci_util.bit_rate_flex(self.weighted_paths["SNR"][path])
         elif strategy == "shannon":
-            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+            bit_rate = sci_util.bit_rate_shannon(self.weighted_paths["SNR"][path])
         else:
             bit_rate = 0  # error
         return bit_rate
