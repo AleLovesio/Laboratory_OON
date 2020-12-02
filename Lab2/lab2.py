@@ -146,7 +146,7 @@ class Line:
         return (3 * self.length) / (2 * const.speed_of_light)
 
     def noise_generation(self, signal_power):
-        return 0.001 * signal_power * self.length
+        return 1e-9 * signal_power * self.length
 
     def propagate(self, signal_information):
         signal_information.increase_noise_power(self.noise_generation(signal_information.signal_power))

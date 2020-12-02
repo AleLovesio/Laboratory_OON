@@ -167,7 +167,7 @@ class Line:
         return (3 * self.length) / (2 * param.c)
 
     def noise_generation(self, signal_power):
-        return 0.001 * signal_power * self.length
+        return 1e-9 * signal_power * self.length
 
     def propagate(self, lightpath):
         lightpath.increase_noise_power(self.noise_generation(lightpath.signal_power))
