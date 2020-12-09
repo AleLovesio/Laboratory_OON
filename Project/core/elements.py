@@ -146,6 +146,15 @@ class Line:
         self._length = node_data['length']
         self._successive = {}
         self._state = [1]*param.NUMBER_OF_CHANNELS  # or [0]
+        self._n_amplifiers = int(2 + np.floor(self._length / param.MAX_DISTANCE_BETWEEN_AMPLIFIERS))
+        if 'gain' in node_data.keys():
+            self._gain = node_data['gain']
+        else:
+            self._gain = param.LINE_AMPLIFIER_GAIN
+        if 'nf' in node_data.keys():
+            self._gain = node_data['gain']
+        else:
+            self._noise_figure = param.LINE_AMPLIFIER_NF
 
     @property
     def label(self):
@@ -170,6 +179,22 @@ class Line:
     @state.setter
     def state(self, state):
         self._state = state
+
+    @property
+    def n_amplifiers(self):
+        return self._n_amplifiers
+
+    @property
+    def gain(self):
+        return self._gain
+
+    @gain.setter
+    def gain(self, gain):
+        self._gain = gain
+
+    @property
+    def noise_figure(self):
+        return self._noise_figure
 
     def latency_generation(self):
         return (3 * self.length) / (2 * param.c)
