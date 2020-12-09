@@ -39,3 +39,9 @@ def bit_rate_shannon(gsnr):
     # theoretical Shannon rate with an ideal Gaussian modulation
     bit_rate = 2 * param.Rs * np.log2(1 + (gsnr * param.Bn / param.Rs))
     return bit_rate
+
+
+# function to calculate the ASE
+#      [adimensional]      [Hz]          [Hz]     [linear] [linear]
+def ase(n_amplifiers, freq_band_center, noise_bw, noise_fig, gain):
+    return n_amplifiers * param.h_plank * freq_band_center * noise_bw * noise_fig * (gain - 1)

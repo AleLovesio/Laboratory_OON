@@ -210,6 +210,9 @@ class Line:
             self.state[int(lightpath.channel[-1])] = 0
         return lightpath  # to return once the propagation is finished
 
+    def ase_generation(self):
+        return sci_util.ase(self.n_amplifiers, param.C_BAND_CENTER_FREQ, param.Bn, self.noise_figure, self.gain)
+
 
 class Network:
 
@@ -399,7 +402,8 @@ class Network:
                         occupancy = np.array(self.route_space.loc[path].to_list()[1:])
                         # update occupation with switching matrix
                         for i in range(len(path) - 2):
-                            occupancy = occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
+                            occupancy = \
+                                occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
                         # update occupation with line occupation
                         for i in range(len(path) - 1):
                             occupancy = occupancy * np.array(self.lines[path[i:i + 2]].state)
@@ -431,7 +435,6 @@ class Network:
         else:
             bit_rate = 0  # error
         return bit_rate
-
 
 
 class Connection:
