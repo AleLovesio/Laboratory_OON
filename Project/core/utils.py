@@ -1,6 +1,6 @@
 import random
 import numpy as np
-
+import scipy.constants as const
 
 # Function that adds "->" characters between the letters
 def path_add_arrows(path):
@@ -25,3 +25,11 @@ def update_route_space(route_space, nodes, lines):
         for channel in range(len(occupancy)):
             route_space.loc[path, "CH" + str(channel)] = occupancy[channel]
     return route_space
+
+
+def alpha_to_alpha_db(alpha):
+    return alpha * 10 * np.log10(np.exp(1))
+
+
+def alpha_db_to_alpha(alpha_db):
+    return alpha_db / (10 * np.log10(np.exp(1)))

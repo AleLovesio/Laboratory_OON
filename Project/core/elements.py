@@ -152,9 +152,21 @@ class Line:
         else:
             self._gain = param.LINE_AMPLIFIER_GAIN
         if 'nf' in node_data.keys():
-            self._gain = node_data['gain']
+            self._noise_figure = node_data['nf']
         else:
             self._noise_figure = param.LINE_AMPLIFIER_NF
+        if 'alpha' in node_data.keys():
+            self._alpha = node_data['alpha']
+        else:
+            self._alpha = param.alpha_default
+        if 'beta_2' in node_data.keys():
+            self._beta_2 = node_data['beta_2']
+        else:
+            self._beta_2 = param.beta_2_default
+        if 'gamma' in node_data.keys():
+            self._gamma = node_data['gamma']
+        else:
+            self._gamma = param.gamma_default
 
     @property
     def label(self):
@@ -191,6 +203,22 @@ class Line:
     @gain.setter
     def gain(self, gain):
         self._gain = gain
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @property
+    def alpha_db(self):
+        return util.alpha_to_alpha_db(self._alpha)
+
+    @property
+    def beta_2(self):
+        return self._beta_2
+
+    @property
+    def gamma(self):
+        return self._gamma
 
     @property
     def noise_figure(self):
