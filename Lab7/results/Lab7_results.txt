@@ -1,0 +1,4 @@
+Fixed Rate: Total deployed capacity: 10000.0Gbps, Average bit rate: 100.0 Gbps, Rejected connections: 0
+Flexible Rate: Total deployed capacity: 10000.0Gbps, Average bit rate: 100.0 Gbps, Rejected connections: 0
+Theoretical Shannon Rate: Total deployed capacity: 24184.728438378683Gbps, Average bit rate: 241.84728438378684 Gbps, Rejected connections: 0
+	
