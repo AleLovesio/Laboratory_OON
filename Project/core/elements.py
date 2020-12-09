@@ -69,10 +69,20 @@ class Lightpath(SignalInformation):
         else:
             self._channel = "CH0"
             # self._channel = 193.5e12
+        self._Rs = param.Rs
+        self._df = param.delta_f
 
     @property
     def channel(self):
         return self._channel
+
+    @property
+    def Rs(self):
+        return self._Rs
+
+    @property
+    def df(self):
+        return self._df
 
 
 class Node:
