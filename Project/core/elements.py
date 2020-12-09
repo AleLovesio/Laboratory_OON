@@ -156,6 +156,7 @@ class Line:
         self._length = node_data['length']
         self._successive = {}
         self._state = [1]*param.NUMBER_OF_CHANNELS  # or [0]
+        self._n_span = int(np.ceil(self._length / param.MAX_DISTANCE_BETWEEN_AMPLIFIERS))
         self._n_amplifiers = int(2 + np.floor(self._length / param.MAX_DISTANCE_BETWEEN_AMPLIFIERS))
         if 'gain' in node_data.keys():
             self._gain = node_data['gain']
@@ -201,6 +202,10 @@ class Line:
     @state.setter
     def state(self, state):
         self._state = state
+
+    @property
+    def n_span(self):
+        return self._n_span
 
     @property
     def n_amplifiers(self):
@@ -250,6 +255,10 @@ class Line:
 
     def ase_generation(self):
         return sci_util.ase(self.n_amplifiers, param.C_BAND_CENTER_FREQ, param.Bn, self.noise_figure, self.gain)
+
+    def nli_generation(self, lightpath):
+        eta_nli = sci_util.nli_eta_nli(self.beta_2, lightpath.Rs, len(self.state), lightpath.df, self.gamma, self.alpha)
+        return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span)
 
 
 class Network:
