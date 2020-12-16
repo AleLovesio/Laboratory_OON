@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.special as sci_spe
 from core import parameters as param
 
 
@@ -14,7 +15,7 @@ def line_len(node_pos, second_node_pos):
 
 # function to calculate the bit rate for fixed rate strategy
 def bit_rate_fixed(gsnr):
-    if gsnr >= (4 * param.BERt * param.Rs / param.Bn):
+    if gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * param.Rs / param.Bn):
         bit_rate = 1e11  # 100Gbps, PM-QPSK
     else:
         bit_rate = 0  # 0Gbps
@@ -23,11 +24,11 @@ def bit_rate_fixed(gsnr):
 
 # function to calculate the bit rate for flex rate strategy
 def bit_rate_flex(gsnr):
-    if gsnr >= ((80/3) * param.BERt * param.Rs / param.Bn):
+    if gsnr >= (10 * ((sci_spe.erfcinv((8 / 3) * param.BERt)) ** 2) * param.Rs / param.Bn):
         bit_rate = 4e11  # 400Gbps, PM-16QAM
-    elif gsnr >= (7 * param.BERt * param.Rs / param.Bn):
+    elif gsnr >= ((14 / 3) * ((sci_spe.erfcinv((3 / 2) * param.BERt)) ** 2) * param.Rs / param.Bn):
         bit_rate = 2e11  # 200Gbps, PM-8QAM
-    elif gsnr >= (4 * param.BERt * param.Rs / param.Bn):
+    elif gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * param.Rs / param.Bn):
         bit_rate = 1e11  # 100Gbps, PM-QPSK
     else:
         bit_rate = 0  # 0Gbps
