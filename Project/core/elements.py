@@ -178,6 +178,7 @@ class Line:
             self._gamma = node_data['gamma']
         else:
             self._gamma = param.gamma_default
+        self._L_eff = 1 / (2 * self._alpha)
 
     @property
     def label(self):
@@ -239,6 +240,10 @@ class Line:
     def noise_figure(self):
         return self._noise_figure
 
+    @property
+    def L_eff(self):
+        return self._L_eff
+
     def latency_generation(self):
         return (3 * self.length) / (2 * param.c)
 
@@ -257,8 +262,9 @@ class Line:
         return sci_util.ase(self.n_amplifiers, param.C_BAND_CENTER_FREQ, param.Bn, self.noise_figure, self.gain)
 
     def nli_generation(self, lightpath):
-        eta_nli = sci_util.nli_eta_nli(self.beta_2, lightpath.Rs, len(self.state), lightpath.df, self.gamma, self.alpha)
-        return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span)
+        eta_nli = sci_util.nli_eta_nli(self.beta_2, lightpath.Rs, len(self.state),
+                                       lightpath.df, self.gamma, self.alpha, self.L_eff)
+        return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span, param.Bn)
 
 
 class Network:

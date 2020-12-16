@@ -49,12 +49,12 @@ def ase(n_amplifiers, freq_band_center, noise_bw, noise_fig, gain):
 
 
 # function to calculate the nonlinear interference.
-def nli(Pch, eta_nli, N_span):
-    return (Pch**3) * eta_nli * N_span
+def nli(Pch, eta_nli, N_span, Bn):
+    return (Pch**3) * eta_nli * N_span * Bn
 
 
 # function to calculate eta_nli for nonlinear interference
-def nli_eta_nli(beta_2, Rs, Nch, delta_f, gamma, alpha):
-    return (16 / (17 * param.pi)) * \
+def nli_eta_nli(beta_2, Rs, Nch, delta_f, gamma, alpha, L_eff):
+    return (16 / (27 * param.pi)) * \
            np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) * (Nch ** (2 * Rs / delta_f))) * \
-           ((gamma ** 2)/(4 * alpha * beta_2)) * (1/(Rs ** 3))
+           (alpha / beta_2) * ((gamma ** 2) * (L_eff ** 2) / (Rs ** 3))

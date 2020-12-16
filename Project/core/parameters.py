@@ -12,10 +12,11 @@ LINE_AMPLIFIER_GAIN = 39.810717
 LINE_AMPLIFIER_NF = 1.995262
 h_plank = const.h
 C_BAND_CENTER_FREQ = 193.414e12
-alpha_default = 46.051702e-3  # linear
-beta_2_default = 2.13e-26  # ps^2/km
-gamma_default = 1.27  # W^-1 m^-1
+alpha_default = 23.025851e-6  # 1/m
+beta_2_default = 2.13e-26  # ps^2/m
+gamma_default = 1.27e-3  # W^-1 m^-1
 delta_f = 50e9  # Hz
+L_eff = 1 / (2 * alpha_default)  # m
 # C band:
 # 191.2 THz, 195.6 THz
 
