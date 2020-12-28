@@ -55,6 +55,4 @@ def nli(Pch, eta_nli, N_span, Bn):
 
 # function to calculate eta_nli for nonlinear interference
 def nli_eta_nli(beta_2, Rs, Nch, delta_f, gamma, alpha, L_eff):
-    return (16 / (27 * param.pi)) * \
-           np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) * (Nch ** (2 * Rs / delta_f))) * \
-           (alpha / beta_2) * ((gamma ** 2) * (L_eff ** 2) / (Rs ** 3))
+    return (16 / (27 * param.pi)) * np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) * (Nch ** (2 * Rs / delta_f))) * (alpha / beta_2) * ((gamma ** 2) * (L_eff ** 2) / (Rs ** 3))

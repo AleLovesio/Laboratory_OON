@@ -22,6 +22,8 @@ class SignalInformation:
             self._path = path
         else:
             self._path = []
+        self._Rs = param.Rs
+        self._df = param.delta_f
 
     @property
     def signal_power(self):
@@ -51,6 +53,14 @@ class SignalInformation:
     def path(self, path):
         self._path = path
 
+    @property
+    def Rs(self):
+        return self._Rs
+
+    @property
+    def df(self):
+        return self._df
+
     def increase_noise_power(self, additional_noise_power):
         self.noise_power = additional_noise_power + self.noise_power
 
@@ -69,20 +79,10 @@ class Lightpath(SignalInformation):
         else:
             self._channel = "CH0"
             # self._channel = 193.5e12
-        self._Rs = param.Rs
-        self._df = param.delta_f
 
     @property
     def channel(self):
         return self._channel
-
-    @property
-    def Rs(self):
-        return self._Rs
-
-    @property
-    def df(self):
-        return self._df
 
 
 class Node:
@@ -247,11 +247,13 @@ class Line:
     def latency_generation(self):
         return (3 * self.length) / (2 * param.c)
 
-    def noise_generation(self, signal_power):
-        return 1e-9 * signal_power * self.length
+    def noise_generation(self, lightpath):
+        # return 1e-9 * lightpath.signal_power * self.length
+        # print("ASE: " + str(self.ase_generation()) + "  NLI: " + str(self.nli_generation(lightpath)))
+        return self.ase_generation() + self.nli_generation(lightpath)
 
     def propagate(self, lightpath):
-        lightpath.increase_noise_power(self.noise_generation(lightpath.signal_power))
+        lightpath.increase_noise_power(self.noise_generation(lightpath))
         lightpath.increase_latency(self.latency_generation())
         self.successive[lightpath.path[0]].propagate(lightpath)
         if type(lightpath) == Lightpath:
@@ -264,6 +266,7 @@ class Line:
     def nli_generation(self, lightpath):
         eta_nli = sci_util.nli_eta_nli(self.beta_2, lightpath.Rs, len(self.state),
                                        lightpath.df, self.gamma, self.alpha, self.L_eff)
+        # print(eta_nli)
         return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span, param.Bn)
 
 
@@ -304,7 +307,7 @@ class Network:
                     for weighted_paths_path in self.find_paths(weighted_paths_start_node, weighted_paths_end_node):
                         df_indexes.append(weighted_paths_path)
                         weighted_paths_path_col.append(util.path_add_arrows(weighted_paths_path))
-                        weighted_paths_sig_inf = SignalInformation(1, weighted_paths_path)
+                        weighted_paths_sig_inf = SignalInformation(param.default_input_power, weighted_paths_path)
                         weighted_paths_sig_inf = self.propagate(weighted_paths_sig_inf)
                         weighted_paths_latency_col.append(weighted_paths_sig_inf.latency)
                         weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
@@ -448,22 +451,24 @@ class Network:
                 stream_connection.bit_rate = bit_rate
                 if bit_rate > 0:
                     first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
-                    lightpath = Lightpath(1, path, "CH" + str(first_available_channel))
+                    lightpath = Lightpath(param.default_input_power, path, "CH" + str(first_available_channel))
                     lightpath = self.propagate(lightpath)
                     self.route_space.loc[path, "CH" + str(first_available_channel)] = 0
-                    for path in self.route_space.index.tolist():
-                        occupancy = np.array(self.route_space.loc[path].to_list()[1:])
+                    for path_route in self.route_space.index.tolist():
+                        occupancy = np.array(self.route_space.loc[path_route].to_list()[1:])
                         # update occupation with switching matrix
-                        for i in range(len(path) - 2):
+                        for i in range(len(path_route) - 2):
                             occupancy = \
-                                occupancy * np.array(self.nodes[path[i + 1]].switching_matrix[path[i]][path[i + 2]])
+                                occupancy * np.array(self.nodes[path_route[i + 1]].switching_matrix[path_route[i]][path_route[i + 2]])
                         # update occupation with line occupation
-                        for i in range(len(path) - 1):
-                            occupancy = occupancy * np.array(self.lines[path[i:i + 2]].state)
+                        for i in range(len(path_route) - 1):
+                            occupancy = occupancy * np.array(self.lines[path_route[i:i + 2]].state)
                         for channel in range(len(occupancy)):
-                            self.route_space.loc[path, "CH" + str(channel)] = occupancy[channel]
+                            self.route_space.loc[path_route, "CH" + str(channel)] = occupancy[channel]
                     stream_connection.latency = lightpath.latency
                     stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
+                    # delet this
+                    # print(path[:2] + " " + str(self.lines[path[:2]].ase_generation()) + " " + str(self.lines[path[:2]].nli_generation(lightpath)))
                 else:
                     stream_connection.latency = 0
                     stream_connection.snr = "None"

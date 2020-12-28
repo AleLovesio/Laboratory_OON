@@ -20,3 +20,5 @@ L_eff = 1 / (2 * alpha_default)  # m
 # C band:
 # 191.2 THz, 195.6 THz
 
+default_input_power = 0.001
+
