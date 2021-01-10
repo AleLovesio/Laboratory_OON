@@ -56,3 +56,11 @@ def nli(Pch, eta_nli, N_span, Bn):
 # function to calculate eta_nli for nonlinear interference
 def nli_eta_nli(beta_2, Rs, Nch, delta_f, gamma, alpha, L_eff):
     return (16 / (27 * param.pi)) * np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) * (Nch ** (2 * Rs / delta_f))) * (alpha / beta_2) * ((gamma ** 2) * (L_eff ** 2) / (Rs ** 3))
+
+
+# function to calculate the optimal launch power in input to a line
+# def opt_launch_pwr(ampl_noise_fig, fiber_span_loss, freq_band_center, noise_bandwidth, eta_nli):
+#    p_base = param.h_plank * freq_band_center * noise_bandwidth
+#    return np.cbrt(ampl_noise_fig * fiber_span_loss * p_base / (2 * noise_bandwidth * eta_nli))
+def opt_launch_pwr(P_ase, eta_nli, N_span, noise_bandwidth):
+    return np.cbrt(P_ase / (2 * noise_bandwidth * eta_nli * N_span))

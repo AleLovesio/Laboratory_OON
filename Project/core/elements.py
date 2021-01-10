@@ -155,7 +155,7 @@ class Line:
         self._label = node_data['label']
         self._length = node_data['length']
         self._successive = {}
-        self._state = [1]*param.NUMBER_OF_CHANNELS  # or [0]
+        self._state = [1] * param.NUMBER_OF_CHANNELS  # or [0]
         self._n_span = int(np.ceil(self._length / param.MAX_DISTANCE_BETWEEN_AMPLIFIERS))
         self._n_amplifiers = int(2 + np.floor(self._length / param.MAX_DISTANCE_BETWEEN_AMPLIFIERS))
         if 'gain' in node_data.keys():
@@ -269,6 +269,14 @@ class Line:
         # print(eta_nli)
         return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span, param.Bn)
 
+    def optimized_launch_power(self, lightpath = None):
+        if lightpath:
+            lightpath = Lightpath()
+        return sci_util.opt_launch_pwr(self.ase_generation(), sci_util.nli_eta_nli(self.beta_2, lightpath.Rs,
+                                                                                   len(self.state), lightpath.df,
+                                                                                   self.gamma, self.alpha, self.L_eff),
+                                       self.n_span, param.Bn)
+
 
 class Network:
 
@@ -291,7 +299,7 @@ class Network:
             if "switching_matrix" in self._nodes_data[key].keys():
                 self._default_switching_matrix_dict[key] = self._nodes_data[key]["switching_matrix"]
             for second_node_str in conn_nodes:
-                line_name = key+second_node_str
+                line_name = key + second_node_str
                 second_node_pos = self._nodes_data[second_node_str]["position"]
                 line_length = sci_util.line_len(node_pos, second_node_pos)
                 self._lines[line_name] = Line({'label': line_name, 'length': line_length})
@@ -378,19 +386,19 @@ class Network:
         level = 0
         while new_paths != 0:
             new_paths = 0
-            paths_dict[level+1] = []
+            paths_dict[level + 1] = []
             for this_level_path in paths_dict[level]:
                 if this_level_path[-1] != label_node2:
                     connected_lines = self.nodes[this_level_path[-1]].successive
                     for connected_line in connected_lines:
                         if connected_line[-1] not in this_level_path:
-                            paths_dict[level+1].append(this_level_path+connected_line[-1])
+                            paths_dict[level + 1].append(this_level_path + connected_line[-1])
                             if connected_line[-1] != label_node2:
                                 new_paths += 1
             level += 1
         paths = []
         for i_level in range(level):
-            for final_path in paths_dict[i_level+1]:
+            for final_path in paths_dict[i_level + 1]:
                 if final_path[-1] == label_node2:
                     paths.append(final_path)
         return paths
@@ -459,7 +467,8 @@ class Network:
                         # update occupation with switching matrix
                         for i in range(len(path_route) - 2):
                             occupancy = \
-                                occupancy * np.array(self.nodes[path_route[i + 1]].switching_matrix[path_route[i]][path_route[i + 2]])
+                                occupancy * np.array(
+                                    self.nodes[path_route[i + 1]].switching_matrix[path_route[i]][path_route[i + 2]])
                         # update occupation with line occupation
                         for i in range(len(path_route) - 1):
                             occupancy = occupancy * np.array(self.lines[path_route[i:i + 2]].state)
@@ -467,8 +476,6 @@ class Network:
                             self.route_space.loc[path_route, "CH" + str(channel)] = occupancy[channel]
                     stream_connection.latency = lightpath.latency
                     stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
-                    # delet this
-                    # print(path[:2] + " " + str(self.lines[path[:2]].ase_generation()) + " " + str(self.lines[path[:2]].nli_generation(lightpath)))
                 else:
                     stream_connection.latency = 0
                     stream_connection.snr = "None"
@@ -478,7 +485,7 @@ class Network:
         for node in self.nodes:
             self.nodes[node].switching_matrix = dict(self.default_switching_matrix_dict[node])
         for line in self.lines:
-            self.lines[line].state = [1]*param.NUMBER_OF_CHANNELS
+            self.lines[line].state = [1] * param.NUMBER_OF_CHANNELS
         for col_num in range(param.NUMBER_OF_CHANNELS):
             self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
         return stream_connections_list
