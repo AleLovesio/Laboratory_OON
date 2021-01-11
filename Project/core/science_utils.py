@@ -14,8 +14,10 @@ def line_len(node_pos, second_node_pos):
 
 
 # function to calculate the bit rate for fixed rate strategy
-def bit_rate_fixed(gsnr):
-    if gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * param.Rs / param.Bn):
+def bit_rate_fixed(gsnr, Rs=None):
+    if not Rs:
+        Rs = param.Rs
+    if gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * Rs / param.Bn):
         bit_rate = 1e11  # 100Gbps, PM-QPSK
     else:
         bit_rate = 0  # 0Gbps
@@ -23,12 +25,14 @@ def bit_rate_fixed(gsnr):
 
 
 # function to calculate the bit rate for flex rate strategy
-def bit_rate_flex(gsnr):
-    if gsnr >= (10 * ((sci_spe.erfcinv((8 / 3) * param.BERt)) ** 2) * param.Rs / param.Bn):
+def bit_rate_flex(gsnr, Rs=None):
+    if not Rs:
+        Rs = param.Rs
+    if gsnr >= (10 * ((sci_spe.erfcinv((8 / 3) * param.BERt)) ** 2) * Rs / param.Bn):
         bit_rate = 4e11  # 400Gbps, PM-16QAM
-    elif gsnr >= ((14 / 3) * ((sci_spe.erfcinv((3 / 2) * param.BERt)) ** 2) * param.Rs / param.Bn):
+    elif gsnr >= ((14 / 3) * ((sci_spe.erfcinv((3 / 2) * param.BERt)) ** 2) * Rs / param.Bn):
         bit_rate = 2e11  # 200Gbps, PM-8QAM
-    elif gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * param.Rs / param.Bn):
+    elif gsnr >= (2 * ((sci_spe.erfcinv(2 * param.BERt)) ** 2) * Rs / param.Bn):
         bit_rate = 1e11  # 100Gbps, PM-QPSK
     else:
         bit_rate = 0  # 0Gbps
@@ -36,9 +40,11 @@ def bit_rate_flex(gsnr):
 
 
 # function to calculate the bit rate for shannon strategy
-def bit_rate_shannon(gsnr):
+def bit_rate_shannon(gsnr, Rs=None):
+    if not Rs:
+        Rs = param.Rs
     # theoretical Shannon rate with an ideal Gaussian modulation
-    bit_rate = 2 * param.Rs * np.log2(1 + (gsnr * param.Bn / param.Rs))
+    bit_rate = 2 * Rs * np.log2(1 + (gsnr * param.Bn / Rs))
     return bit_rate
 
 
@@ -50,12 +56,14 @@ def ase(n_amplifiers, freq_band_center, noise_bw, noise_fig, gain):
 
 # function to calculate the nonlinear interference.
 def nli(Pch, eta_nli, N_span, Bn):
-    return (Pch**3) * eta_nli * N_span * Bn
+    return (Pch ** 3) * eta_nli * N_span * Bn
 
 
 # function to calculate eta_nli for nonlinear interference
 def nli_eta_nli(beta_2, Rs, Nch, delta_f, gamma, alpha, L_eff):
-    return (16 / (27 * param.pi)) * np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) * (Nch ** (2 * Rs / delta_f))) * (alpha / beta_2) * ((gamma ** 2) * (L_eff ** 2) / (Rs ** 3))
+    return (16 / (27 * param.pi)) * np.log(((param.pi ** 2) / 2) * (beta_2 * (Rs ** 2) / alpha) *
+                                           (Nch ** (2 * Rs / delta_f))) * (alpha / beta_2) * ((gamma ** 2) *
+                                                                                              (L_eff ** 2) / (Rs ** 3))
 
 
 # function to calculate the optimal launch power in input to a line

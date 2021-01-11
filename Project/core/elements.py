@@ -24,10 +24,15 @@ class SignalInformation:
             self._path = []
         self._Rs = param.Rs
         self._df = param.delta_f
+        self._ISNR = 0
 
     @property
     def signal_power(self):
         return self._signal_power
+
+    @signal_power.setter
+    def signal_power(self, signal_power):
+        self._signal_power = signal_power
 
     @property
     def noise_power(self):
@@ -61,6 +66,14 @@ class SignalInformation:
     def df(self):
         return self._df
 
+    @property
+    def ISNR(self):
+        return self._ISNR
+
+    @ISNR.setter
+    def ISNR(self, ISNR):
+        self._ISNR = ISNR
+
     def increase_noise_power(self, additional_noise_power):
         self.noise_power = additional_noise_power + self.noise_power
 
@@ -69,6 +82,12 @@ class SignalInformation:
 
     def update_path(self):
         self.path = self.path[1:]
+
+    def set_launch_power(self, launch_power):
+        self.signal_power = launch_power
+
+    def increase_ISNR(self, additional_ISNR):
+        self.ISNR = additional_ISNR + self.ISNR
 
 
 class Lightpath(SignalInformation):
@@ -143,6 +162,7 @@ class Node:
                     self.successive[lightpath.path[:2]].successive[lightpath.path[1]].switching_matrix[lightpath.path[
                         0]][lightpath.path[2]][int(lightpath.channel[-1]) - 1] = 0
             line = self.successive[lightpath.path[:2]]
+            lightpath.set_launch_power(line.optimized_launch_power())
             lightpath.update_path()
             lightpath = line.propagate(lightpath)
 
@@ -254,6 +274,7 @@ class Line:
 
     def propagate(self, lightpath):
         lightpath.increase_noise_power(self.noise_generation(lightpath))
+        lightpath.increase_ISNR(1 / sci_util.to_snr(lightpath.signal_power, self.noise_generation(lightpath)))
         lightpath.increase_latency(self.latency_generation())
         self.successive[lightpath.path[0]].propagate(lightpath)
         if type(lightpath) == Lightpath:
@@ -269,7 +290,7 @@ class Line:
         # print(eta_nli)
         return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span, param.Bn)
 
-    def optimized_launch_power(self, lightpath = None):
+    def optimized_launch_power(self, lightpath=None):
         if lightpath:
             lightpath = Lightpath()
         return sci_util.opt_launch_pwr(self.ase_generation(), sci_util.nli_eta_nli(self.beta_2, lightpath.Rs,
@@ -319,8 +340,9 @@ class Network:
                         weighted_paths_sig_inf = self.propagate(weighted_paths_sig_inf)
                         weighted_paths_latency_col.append(weighted_paths_sig_inf.latency)
                         weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
-                        weighted_paths_snr_col.append(
-                            sci_util.to_snr(weighted_paths_sig_inf.signal_power, weighted_paths_sig_inf.noise_power))
+                        # weighted_paths_snr_col.append(
+                        #    sci_util.to_snr(weighted_paths_sig_inf.signal_power, weighted_paths_sig_inf.noise_power))
+                        weighted_paths_snr_col.append(1 / weighted_paths_sig_inf.ISNR)
         self._weighted_paths["Path"] = weighted_paths_path_col
         self._weighted_paths["Latency"] = weighted_paths_latency_col
         self._weighted_paths["Noise"] = weighted_paths_noise_col
@@ -475,7 +497,8 @@ class Network:
                         for channel in range(len(occupancy)):
                             self.route_space.loc[path_route, "CH" + str(channel)] = occupancy[channel]
                     stream_connection.latency = lightpath.latency
-                    stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
+                    # stream_connection.snr = sci_util.to_snr(lightpath.signal_power, lightpath.noise_power)
+                    stream_connection.snr = 1 / lightpath.ISNR
                 else:
                     stream_connection.latency = 0
                     stream_connection.snr = "None"
@@ -490,13 +513,13 @@ class Network:
             self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
         return stream_connections_list
 
-    def calculate_bit_rate(self, path, strategy):
+    def calculate_bit_rate(self, lightpath, strategy):
         if strategy == "fixed_rate":
-            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][path])
+            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
         elif strategy == "flex_rate":
-            bit_rate = sci_util.bit_rate_flex(self.weighted_paths["SNR"][path])
+            bit_rate = sci_util.bit_rate_flex(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
         elif strategy == "shannon":
-            bit_rate = sci_util.bit_rate_shannon(self.weighted_paths["SNR"][path])
+            bit_rate = sci_util.bit_rate_shannon(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
         else:
             bit_rate = 0  # error
         return bit_rate
