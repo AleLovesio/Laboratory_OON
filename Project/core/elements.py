@@ -291,7 +291,7 @@ class Line:
         return sci_util.nli(lightpath.signal_power, eta_nli, self.n_span, param.Bn)
 
     def optimized_launch_power(self, lightpath=None):
-        if lightpath:
+        if not lightpath:
             lightpath = Lightpath()
         return sci_util.opt_launch_pwr(self.ase_generation(), sci_util.nli_eta_nli(self.beta_2, lightpath.Rs,
                                                                                    len(self.state), lightpath.df,
@@ -477,11 +477,11 @@ class Network:
             else:
                 path = self.find_best_snr(stream_connection.input, stream_connection.output)
             if path != "":
-                bit_rate = self.calculate_bit_rate(path, self.nodes[path[0]].transceiver)
+                first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
+                lightpath = Lightpath(param.default_input_power, path, "CH" + str(first_available_channel))
+                bit_rate = self.calculate_bit_rate(lightpath, self.nodes[path[0]].transceiver)
                 stream_connection.bit_rate = bit_rate
                 if bit_rate > 0:
-                    first_available_channel = self.route_space.loc[path].tolist().index(1) - 1  # find the first one
-                    lightpath = Lightpath(param.default_input_power, path, "CH" + str(first_available_channel))
                     lightpath = self.propagate(lightpath)
                     self.route_space.loc[path, "CH" + str(first_available_channel)] = 0
                     for path_route in self.route_space.index.tolist():
