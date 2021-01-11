@@ -373,6 +373,10 @@ class Network:
     def default_switching_matrix_dict(self):
         return self._default_switching_matrix_dict
 
+    @default_switching_matrix_dict.setter
+    def default_switching_matrix_dict(self, default_switching_matrix_dict):
+        self._default_switching_matrix_dict = default_switching_matrix_dict
+
     def connect(self):
         for node_name in self.nodes:
             if node_name not in self.default_switching_matrix_dict.keys():
