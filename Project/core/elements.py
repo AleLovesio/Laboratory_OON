@@ -274,7 +274,8 @@ class Line:
 
     def propagate(self, lightpath):
         lightpath.increase_noise_power(self.noise_generation(lightpath))
-        lightpath.increase_ISNR(1 / sci_util.to_snr(lightpath.signal_power, self.noise_generation(lightpath)))
+        # lightpath.increase_ISNR(1 / sci_util.to_snr(lightpath.signal_power, self.noise_generation(lightpath)))
+        lightpath.increase_ISNR(self.noise_generation(lightpath) / lightpath.signal_power)
         lightpath.increase_latency(self.latency_generation())
         self.successive[lightpath.path[0]].propagate(lightpath)
         if type(lightpath) == Lightpath:
@@ -342,7 +343,7 @@ class Network:
                         weighted_paths_noise_col.append(weighted_paths_sig_inf.noise_power)
                         # weighted_paths_snr_col.append(
                         #    sci_util.to_snr(weighted_paths_sig_inf.signal_power, weighted_paths_sig_inf.noise_power))
-                        weighted_paths_snr_col.append(1 / weighted_paths_sig_inf.ISNR)
+                        weighted_paths_snr_col.append(sci_util.linear_to_db(1 / weighted_paths_sig_inf.ISNR))
         self._weighted_paths["Path"] = weighted_paths_path_col
         self._weighted_paths["Latency"] = weighted_paths_latency_col
         self._weighted_paths["Noise"] = weighted_paths_noise_col
@@ -470,10 +471,8 @@ class Network:
                 best_latency = test_latency
         return best_latency_path
 
-    def stream(self, stream_connections_list, pref=None):
-        if pref:
-            pref = "Latency"
-        else:
+    def stream(self, stream_connections_list, pref=None, keep_network_once_done=None):
+        if not pref:
             pref = "SNR"
         for stream_connection in stream_connections_list:
             if pref == "Latency":
@@ -509,24 +508,73 @@ class Network:
             else:
                 stream_connection.latency = 0
                 stream_connection.snr = "None"
+        if not keep_network_once_done:
+            self.restore_network()
+        #    for node in self.nodes:
+        #        self.nodes[node].switching_matrix = dict(self.default_switching_matrix_dict[node])
+        #    for line in self.lines:
+        #        self.lines[line].state = [1] * param.NUMBER_OF_CHANNELS
+        #    for col_num in range(param.NUMBER_OF_CHANNELS):
+        #        self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
+        return stream_connections_list
+
+    def calculate_bit_rate(self, lightpath, strategy):
+        if strategy == "fixed_rate":
+            bit_rate = sci_util.bit_rate_fixed(sci_util.db_to_linear(self.weighted_paths["SNR"][lightpath.path]), lightpath.Rs)
+        elif strategy == "flex_rate":
+            bit_rate = sci_util.bit_rate_flex(sci_util.db_to_linear(self.weighted_paths["SNR"][lightpath.path]), lightpath.Rs)
+        elif strategy == "shannon":
+            bit_rate = sci_util.bit_rate_shannon(sci_util.db_to_linear(self.weighted_paths["SNR"][lightpath.path]), lightpath.Rs)
+        else:
+            bit_rate = 0  # error
+        return bit_rate
+
+    def manage_traffic(self, traffic_matrix):
+        # reject_matrix = {}
+        self.restore_network()
+        connections_to_be_made = []
+        for node_x in traffic_matrix.keys():
+            # reject_matrix[node_x] = {}
+            for node_y in traffic_matrix[node_x].keys():
+                if node_x != node_y and traffic_matrix[node_x][node_y] > 0:
+                    # reject_matrix[node_x][node_y] = True   # connection to be deployed
+                    connections_to_be_made.append((node_x, node_y))
+            #    else:
+                    # reject_matrix[node_x][node_y] = False   # already rejected
+
+        connections_list = []
+
+        while connections_to_be_made:
+            conn = util.sample_nodes(connections_to_be_made, 1)
+            start_node = conn[0][0]
+            end_node = conn[0][1]
+            # (start_node, end_node)
+            # nodes_x = traffic_matrix.keys()
+            # start_node = util.sample_nodes(nodes_x, 2)
+            # nodes_y = traffic_matrix[start_node].keys()
+            # end_node = util.sample_nodes(nodes_y, 1)
+            # if traffic_matrix[start_node][end_node] > 0 and reject_matrix[start_node][end_node]:
+
+            new_connection = Connection(start_node, end_node, param.default_input_power)
+            new_connection = self.stream([new_connection], "SNR", True)
+            connections_list += new_connection
+            if new_connection[0].latency != 0.0 and new_connection[0].snr != "None" and new_connection[0].bit_rate != 0.0:
+                traffic_matrix[start_node][end_node] -= new_connection[0].bit_rate
+                if traffic_matrix[start_node][end_node] <= 0:
+                    connections_to_be_made.remove((start_node, end_node))
+            else:
+                # reject_matrix[start_node][end_node] = False
+                connections_to_be_made.remove((start_node, end_node))
+
+        return [connections_list, traffic_matrix]
+
+    def restore_network(self):
         for node in self.nodes:
             self.nodes[node].switching_matrix = dict(self.default_switching_matrix_dict[node])
         for line in self.lines:
             self.lines[line].state = [1] * param.NUMBER_OF_CHANNELS
         for col_num in range(param.NUMBER_OF_CHANNELS):
             self.route_space["CH" + str(col_num)] = [1] * len(self.route_space.index)
-        return stream_connections_list
-
-    def calculate_bit_rate(self, lightpath, strategy):
-        if strategy == "fixed_rate":
-            bit_rate = sci_util.bit_rate_fixed(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
-        elif strategy == "flex_rate":
-            bit_rate = sci_util.bit_rate_flex(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
-        elif strategy == "shannon":
-            bit_rate = sci_util.bit_rate_shannon(self.weighted_paths["SNR"][lightpath.path], lightpath.Rs)
-        else:
-            bit_rate = 0  # error
-        return bit_rate
 
 
 class Connection:

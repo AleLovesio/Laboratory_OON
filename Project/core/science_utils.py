@@ -13,6 +13,16 @@ def line_len(node_pos, second_node_pos):
     return np.sqrt((node_pos[0] - second_node_pos[0]) ** 2 + (node_pos[1] - second_node_pos[1]) ** 2)
 
 
+# linear to db
+def linear_to_db(val):
+    return 10 * np.log10(val)
+
+
+# db to linear
+def db_to_linear(val):
+    return 10 ** (val / 10)
+
+
 # function to calculate the bit rate for fixed rate strategy
 def bit_rate_fixed(gsnr, Rs=None):
     if not Rs:
