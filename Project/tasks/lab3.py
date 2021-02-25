@@ -13,7 +13,7 @@ if __name__ == "__main__":
     network_nodes_list = list(network.nodes.keys())
     connections_list = []
     for i in range(100):
-        [start_node, end_node] = util.sample_2_nodes(network_nodes_list)
+        [start_node, end_node] = util.sample_nodes(network_nodes_list, 2)
         connections_list.append(elem.Connection(start_node, end_node, 1))
     for analysis_type in ["Latency", "SNR"]:
         connections_list = network.stream(connections_list, analysis_type)

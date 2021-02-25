@@ -16,7 +16,7 @@ if __name__ == "__main__":
     network_nodes_list = list(network.nodes.keys())
     node_couples = []
     for i in range(100):
-        node_couples.append(util.sample_2_nodes(network_nodes_list))
+        node_couples.append(util.sample_nodes(network_nodes_list,2))
     for j in range(len(types)):
         connections_list = []
         network = elem.Network(file[j])
