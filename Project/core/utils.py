@@ -1,7 +1,6 @@
 import random
 import os
 import numpy as np
-import scipy.constants as const
 from datetime import datetime
 
 
@@ -118,7 +117,6 @@ class Logger:
         if self._print_log_on_console:
             print(line)
 
-    # Logs the line with an additional timestap at the beginning of the line
+    # Logs the line with an additional timestamp at the beginning of the line
     def log_line_with_time(self, line):
         self.log_line(add_time(line))
-
