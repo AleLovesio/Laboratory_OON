@@ -554,7 +554,7 @@ class Network:
             for final_path in paths_dict[i_level + 1]:
                 # If the final node of the path is the target destination
                 if final_path[-1] == label_node2:
-                    # Add the path to the list of valide nodes
+                    # Add the path to the list of valid nodes
                     paths.append(final_path)
         # Return the valid paths
         return paths
