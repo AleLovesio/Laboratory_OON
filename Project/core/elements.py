@@ -469,6 +469,8 @@ class Network:
             if node_name not in self.default_switching_matrix_dict.keys():
                 # Create the dictionary for later
                 self.nodes[node_name].switching_matrix = {}
+                # Create the default dictionary for later
+                self.default_switching_matrix_dict[node_name] = {}
                 # Set the flag to 1, so that later the switching matrix will be created
                 set_default = 1
             # If node has a given switching matrix

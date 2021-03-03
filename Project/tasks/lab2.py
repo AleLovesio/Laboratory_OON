@@ -11,7 +11,6 @@ if __name__ == "__main__":
     root = Path(__file__).parent.parent
     file = root / "resources" / "nodes.json"
     network = elem.Network(file)
-    network.connect()
     dataframe = pd.DataFrame()
     path_col = []
     latency_col = []
