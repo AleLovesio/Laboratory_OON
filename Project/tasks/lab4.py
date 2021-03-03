@@ -25,7 +25,7 @@ if __name__ == "__main__":
             if analysis_type == "Latency" and connection.latency != 0:
                 streams_list.append(connection.latency)
             elif analysis_type == "SNR" and connection.snr != "None":
-                streams_list.append(connection.snr)
+                streams_list.append(sci_util.linear_to_db(connection.snr))
 
         plt.figure()
         plt.hist(streams_list, bins=15)

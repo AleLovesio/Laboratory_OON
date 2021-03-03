@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 if __name__ == "__main__":
+    snr_analysis_only = False
     root = Path(__file__).parent.parent
     file = root / "resources" / "nodes.json"
     network = elem.Network(file)
@@ -15,18 +16,23 @@ if __name__ == "__main__":
     for i in range(100):
         [start_node, end_node] = util.sample_nodes(network_nodes_list, 2)
         connections_list.append(elem.Connection(start_node, end_node, 1))
-    for analysis_type in ["Latency", "SNR"]:
+    if snr_analysis_only:
+        analyses = ["SNR"]
+    else:
+        analyses = ["Latency", "SNR"]
+    for analysis_type in analyses:
         connections_list = network.stream(connections_list, analysis_type)
         streams_snr_list = []
         streams_latency_list = []
         for connection in connections_list:
             streams_snr_list.append(connection.snr)
-            streams_latency_list.append(connection.latency)
+            streams_latency_list.append(sci_util.linear_to_db(connection.latency))
         plt.figure()
-        plt.hist(streams_snr_list, bins=15)
         if analysis_type == "Latency":
+            plt.hist(streams_latency_list, bins=15)
             unit = "[s]"
         else:
+            plt.hist(streams_snr_list, bins=15)
             unit = "[dB]"
         plt.xlabel(analysis_type+" Range "+unit)
         plt.ylabel("Paths")

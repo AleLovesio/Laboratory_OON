@@ -358,17 +358,18 @@ class Connection:
 
 
 if __name__ == "__main__":
+    snr_analysis_only = False
     network = Network("nodes.json")
-#    print(network.weighted_paths)
-#    print(network.find_best_snr("A", "E"))
-#    print(network.find_best_latency("A", "E"))
-#    network.draw()
     network_nodes_list = list(network.nodes.keys())
     connections_list = []
     for i in range(100):
         [start_node, end_node] = random.sample(network_nodes_list, 2)
         connections_list.append(Connection(start_node, end_node, 1))
-    for analysis_type in ["Latency", "SNR"]:
+    if snr_analysis_only:
+        analyses = ["SNR"]
+    else:
+        analyses = ["Latency", "SNR"]
+    for analysis_type in analyses:
         network.stream(connections_list, analysis_type)
         streams_snr_list = []
         streams_latency_list = []
@@ -376,10 +377,11 @@ if __name__ == "__main__":
             streams_snr_list.append(connection.snr)
             streams_latency_list.append(connection.latency)
         plt.figure()
-        plt.hist(streams_snr_list, bins=15)
         if analysis_type == "Latency":
+            plt.hist(streams_latency_list, bins=15)
             unit = "[s]"
         else:
+            plt.hist(streams_snr_list, bins=15)
             unit = "[dB]"
         plt.xlabel(analysis_type+" Range "+unit)
         plt.ylabel("Paths")
